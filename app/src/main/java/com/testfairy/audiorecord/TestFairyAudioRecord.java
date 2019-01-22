@@ -13,7 +13,10 @@ import android.util.Log;
 import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.ref.WeakReference;
+import java.util.Date;
 
 public class TestFairyAudioRecord {
 
@@ -30,6 +33,7 @@ public class TestFairyAudioRecord {
 	static private final int[] RECORDER_AUDIO_ENCODINGS = new int[] { AudioFormat.ENCODING_PCM_16BIT };
 	static private final int SHORTS_PER_ELEMENT = 2; // 2 bytes in 16bit format, must be in sync with the encoding (above)
 	static private final int IN_MEMORY_FILE_SIZE_IN_BYTES = 500 * 1024;
+	static private final int AUDIO_FILE_MAX_DURATION_IN_SECONDS = 15;
 
 
 	/***************** Recorder State *****************/
@@ -104,6 +108,10 @@ public class TestFairyAudioRecord {
 					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) ==
 							PackageManager.PERMISSION_GRANTED) {
 						// put your code for Version>=Marshmallow
+						if (recorder != null) {
+							stopRecording();
+						}
+
 						recorder = findAndCreateAudioRecordFromSpecs();
 					} else {
 						if (activity.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) {
@@ -119,20 +127,25 @@ public class TestFairyAudioRecord {
 					}
 
 				} else {
+					if (recorder != null) {
+						stopRecording();
+					}
 					recorder = findAndCreateAudioRecordFromSpecs();
 				}
 
 				if (recorder != null) {
-					recorder.startRecording();
-					isRecording = true;
-					recordingThread = new Thread(new Runnable() {
-						public void run() {
-							pipeAudioDataToMemoryAndFlushPeriodicallyInBackgroundThread();
-						}
-					}, "TFAudioRecorder Thread");
-					recordingThread.start();
+					synchronized (recorder) {
+						recorder.startRecording();
+						isRecording = true;
+						recordingThread = new Thread(new Runnable() {
+							public void run() {
+								pipeAudioDataToMemoryAndFlushPeriodicallyInBackgroundThread();
+							}
+						}, "TFAudioRecorder Thread");
+						recordingThread.start();
 
-					Log.d(TAG, "Started recording.");
+						Log.d(TAG, "Started recording.");
+					}
 				}
 			}
 		}
@@ -163,6 +176,20 @@ public class TestFairyAudioRecord {
 		if (activityWeakReference.get() != null) {
 			synchronized (activityWeakReference.get()) {
 				if (recorder != null) {
+					synchronized (recorder) {
+						isRecording = false;
+						recorder.stop();
+						recorder.release();
+						recorder = null;
+						recordingThread = null;
+
+						Log.d(TAG, "Stopped recording.");
+					}
+				}
+			}
+		} else {
+			if (recorder != null) {
+				synchronized (recorder) {
 					isRecording = false;
 					recorder.stop();
 					recorder.release();
@@ -171,16 +198,6 @@ public class TestFairyAudioRecord {
 
 					Log.d(TAG, "Stopped recording.");
 				}
-			}
-		} else {
-			if (recorder != null) {
-				isRecording = false;
-				recorder.stop();
-				recorder.release();
-				recorder = null;
-				recordingThread = null;
-
-				Log.d(TAG, "Stopped recording.");
 			}
 		}
 	}
@@ -215,34 +232,69 @@ public class TestFairyAudioRecord {
 
 	private void pipeAudioDataToMemoryAndFlushPeriodicallyInBackgroundThread() {
 		// Write the output audio in byte
-		short sData[] = new short[SHORTS_PER_ELEMENT];
+		short soundBuffer[] = new short[SHORTS_PER_ELEMENT];
 
 		ByteArrayOutputStream os = new ByteArrayOutputStream(IN_MEMORY_FILE_SIZE_IN_BYTES);
+		StopWatch flushStopWatch = new StopWatch(false);
+		StopWatch logStopWatch = new StopWatch(true);
 
 		while (isRecording) {
 			// gets the voice output from microphone to byte format
 			if (activityWeakReference.get() != null) {
 				synchronized (activityWeakReference.get()) {
-					recorder.read(sData, 0, SHORTS_PER_ELEMENT);
-					Log.d(TAG, "Short wirting to file" + sData.toString());
-					try {
-						// // writes the data to file from buffer
-						// // stores the voice buffer
-						byte bData[] = short2byte(sData);
-						os.write(bData, 0, bData.length);
-					} catch (Throwable e) {
-						e.printStackTrace();
+					flushStopWatch.startIfNotStarted();
+
+					if (flushStopWatch.stopIfAboveTimeLimit(AUDIO_FILE_MAX_DURATION_IN_SECONDS)) {
+						// Duration limit reached, flush!
+						try {
+							flushOutputStreamToTestFairy(os);
+							os.close();
+							os = new ByteArrayOutputStream(IN_MEMORY_FILE_SIZE_IN_BYTES);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+
+						flushStopWatch.start();
+					}
+
+					if (recorder != null) {
+						synchronized (recorder) {
+							recorder.read(soundBuffer, 0, SHORTS_PER_ELEMENT);
+
+							if (logStopWatch.stopIfAboveTimeLimit(1)) {
+								Log.d(TAG, "Short wirting to file" + soundBuffer.toString());
+								logStopWatch.start();
+							}
+
+							try {
+								// // writes the data to file from buffer
+								// // stores the voice buffer
+								byte bData[] = short2byte(soundBuffer);
+								os.write(bData, 0, bData.length);
+							} catch (Throwable e) {
+								e.printStackTrace();
+							}
+						}
 					}
 				}
 			} else {
+				flushStopWatch.stop();
 				stopRecording();
 			}
 		}
+
 		try {
+			flushStopWatch.stop();
+			flushOutputStreamToTestFairy(os);
 			os.close();
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void flushOutputStreamToTestFairy(ByteArrayOutputStream os) {
+		// TODO
+		Log.d(TAG, "Flushing audio to TestFairy");
 	}
 
 
@@ -256,7 +308,44 @@ public class TestFairyAudioRecord {
 			bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
 			sData[i] = 0;
 		}
+
 		return bytes;
+	}
+
+	static private class StopWatch {
+
+		private long startTime = 0;
+
+		public StopWatch(boolean autoStart) {
+			if (autoStart) start();
+		}
+
+		public void start() {
+			if (startTime != 0) throw new IllegalStateException("StopWatch already started before.");
+
+			startTime = new Date().getTime();
+		}
+
+		public void stop() {
+			startTime = 0;
+		}
+
+		public void startIfNotStarted() {
+			if (startTime == 0) start();
+		}
+
+		public boolean stopIfAboveTimeLimit(int limitInSeconds) {
+			if (startTime == 0) throw new IllegalStateException("Cannot stop a StopWatch before starting it first.");
+
+			long currentTime = new Date().getTime();
+
+			if (currentTime - startTime >= limitInSeconds * 1000) {
+				startTime = 0;
+				return true;
+			} else {
+				return false;
+			}
+		}
 	}
 
 
