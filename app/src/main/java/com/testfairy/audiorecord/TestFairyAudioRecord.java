@@ -58,6 +58,13 @@ public class TestFairyAudioRecord {
 
 	/***************** Public Interface *****************/
 
+
+	/**
+	 * Call this method at the end of your Activity's onCreate block. It is essential
+	 * to call this before everything else to make sure a recorder thread is created.
+	 *
+	 * @param activity The activity which the operating system launches
+	 */
 	static public void onCreate(@NonNull Activity activity) {
 		if (instance != null) {
 			synchronized (instance) {
@@ -77,6 +84,11 @@ public class TestFairyAudioRecord {
 		});
 	}
 
+	/**
+	 * Call this method at the end of your Activity's onResume block. It is essential
+	 * to call this to restart audio recorder when your app gains focus on foreground.
+	 *
+	 */
 	static public void onResume() {
 		Log.d(TAG, "TestFairyAudioRecord is in foreground.");
 
@@ -89,6 +101,11 @@ public class TestFairyAudioRecord {
 		}
 	}
 
+	/**
+	 * Call this method at the end of your Activity's onPause block. It is essential
+	 * to call this to flush recorded audio before your app goes to background.
+	 *
+	 */
 	static public void onPause() {
 		Log.d(TAG, "TestFairyAudioRecord is in background.");
 
@@ -101,6 +118,14 @@ public class TestFairyAudioRecord {
 		}
 	}
 
+	/**
+	 * Call this method at the end of your Activity's onRequestPermissionsResult block.
+	 * It is essential to call this to give access to TestFairy SDK your device's mic.
+	 *
+	 * @param requestCode Request code of the permission, pass what you receive from the event directly.
+	 * @param permissions Requested ermission list, pass what you receive from the event directly.
+	 * @param grantResults Granted permission request list, pass what you receive from the event directly.
+	 */
 	static public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 		Log.d(TAG, "TestFairyAudioRecord received permission results.");
 
@@ -113,6 +138,13 @@ public class TestFairyAudioRecord {
 		}
 	}
 
+	/**
+	 * Call this method after you launch a recorder session if you want to get access to recorder audio data.
+	 * If you are only interested in listening your audio via TestFairy dashboard, you may ignore this method
+	 * entirely.
+	 *
+	 * @param listener A listener which will be notified every time an audio sample is ready. (~every 15 seconds)
+	 */
 	static public void setAudioSampleListener(AudioSampleListener listener) {
 		if (instance != null) {
 			synchronized (instance) {
