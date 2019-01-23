@@ -48,6 +48,7 @@ public class TestFairyAudioRecord {
 	private boolean isRecording = false;
 	private boolean alreadyDeniedPermission = false;
 	private StopWatch sessionStopwatch = new StopWatch(false);
+	private AudioSampleListener audioSampleListener = null;
 
 
 	/***************** Singleton State *****************/
@@ -106,6 +107,16 @@ public class TestFairyAudioRecord {
 		if (instance != null) {
 			synchronized (instance) {
 				instance.retryWithRecievedPermissions(requestCode, permissions, grantResults);
+			}
+		} else {
+			throw new AudioRecorderNotInitializedException();
+		}
+	}
+
+	static public void setAudioSampleListener(AudioSampleListener listener) {
+		if (instance != null) {
+			synchronized (instance) {
+				instance.audioSampleListener = listener;
 			}
 		} else {
 			throw new AudioRecorderNotInitializedException();
@@ -346,7 +357,7 @@ public class TestFairyAudioRecord {
 	private void flushOutputStreamToTestFairy(@NonNull ByteArrayOutputStream os, float timestamp) {
 		Log.d(TAG, "Flushing audio to TestFairy: " + timestamp);
 
-		AudioSample sample = new AudioSample(
+		final AudioSample sample = new AudioSample(
 				RECORDER_SAMPLERATE,
 				SHORTS_PER_ELEMENT * 8,
 				1,
@@ -354,6 +365,15 @@ public class TestFairyAudioRecord {
 				timestamp,
 				os.toByteArray()
 		);
+
+		if (audioSampleListener != null && activityWeakReference.get() != null) {
+			activityWeakReference.get().runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					audioSampleListener.onNewSample(sample);
+				}
+			});
+		}
 
 		TestFairy.addAudioRecording(sample);
 	}
@@ -415,6 +435,13 @@ public class TestFairyAudioRecord {
 
 			return (float) (((double) diff) / 1000.0);
 		}
+	}
+
+
+	/***************** Listeners *****************/
+
+	public interface AudioSampleListener {
+		void onNewSample(AudioSample audioSample);
 	}
 
 
