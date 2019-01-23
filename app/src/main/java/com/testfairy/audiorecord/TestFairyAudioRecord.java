@@ -12,6 +12,10 @@ import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.testfairy.SessionStateListener;
+import com.testfairy.TestFairy;
+import com.testfairy.modules.audio.AudioSample;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -22,6 +26,7 @@ public class TestFairyAudioRecord {
 	/***************** SDK Constants *****************/
 
 	static private String TAG = "TFAudioRecorder";
+	static private String THREAD_NAME = "testfairy-audiorecord";
 	static private int REQUEST_AUDIO_PERMISSION_RESULT = 999876;
 
 
@@ -42,6 +47,7 @@ public class TestFairyAudioRecord {
 	private Thread recordingThread = null;
 	private boolean isRecording = false;
 	private int bufferElements2Rec = -2;
+	private StopWatch sessionStopwatch = new StopWatch(false);
 
 
 	/***************** Singleton State *****************/
@@ -61,6 +67,13 @@ public class TestFairyAudioRecord {
 		}
 
 		Log.d(TAG, "TestFairyAudioRecord initialized.");
+
+		TestFairy.addSessionStateListener(new SessionStateListener() {
+			@Override
+			public void onSessionStarted(String s) {
+				instance.sessionStopwatch.start();
+			}
+		});
 	}
 
 	static public void onResume() {
@@ -148,7 +161,7 @@ public class TestFairyAudioRecord {
 							public void run() {
 								pipeAudioDataToMemoryAndFlushPeriodicallyInBackgroundThread();
 							}
-						}, "TFAudioRecorder Thread");
+						}, THREAD_NAME);
 						recordingThread.start();
 
 						Log.d(TAG, "Started recording.");
@@ -244,6 +257,13 @@ public class TestFairyAudioRecord {
 		// Write the output audio in byte
 		short soundBuffer[] = new short[SHORTS_PER_ELEMENT];
 
+		float timeSinceSessionStarted = 0f;
+		try {
+			timeSinceSessionStarted = sessionStopwatch.getSecondsSinceStarted();
+		} catch (IllegalStateException t) {
+			timeSinceSessionStarted = 0f;
+		}
+
 		ByteArrayOutputStream os = new ByteArrayOutputStream(IN_MEMORY_FILE_SIZE_IN_BYTES);
 		StopWatch flushStopWatch = new StopWatch(false);
 		StopWatch logStopWatch = new StopWatch(true);
@@ -257,9 +277,15 @@ public class TestFairyAudioRecord {
 					if (flushStopWatch.stopIfAboveTimeLimit(AUDIO_FILE_MAX_DURATION_IN_SECONDS)) {
 						// Duration limit reached, flush!
 						try {
-							flushOutputStreamToTestFairy(os);
+							flushOutputStreamToTestFairy(os, timeSinceSessionStarted);
 							os.close();
 							os = new ByteArrayOutputStream(IN_MEMORY_FILE_SIZE_IN_BYTES);
+
+							try {
+								timeSinceSessionStarted = sessionStopwatch.getSecondsSinceStarted();
+							} catch (IllegalStateException t) {
+								timeSinceSessionStarted = 0f;
+							}
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
@@ -288,32 +314,32 @@ public class TestFairyAudioRecord {
 					}
 				}
 			} else {
-				flushStopWatch.stop();
 				stopRecording();
 			}
 		}
 
 		try {
 			flushStopWatch.stop();
-			flushOutputStreamToTestFairy(os);
+			flushOutputStreamToTestFairy(os, timeSinceSessionStarted);
 			os.close();
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}
 	}
 
-	private void flushOutputStreamToTestFairy(@NonNull ByteArrayOutputStream os) {
-		Log.d(TAG, "Flushing audio to TestFairy");
+	private void flushOutputStreamToTestFairy(@NonNull ByteArrayOutputStream os, float timestamp) {
+		Log.d(TAG, "Flushing audio to TestFairy: " + timestamp);
 
-		try {
-			AudioSample sample = new AudioSample(RECORDER_SAMPLERATE, SHORTS_PER_ELEMENT * 8, 1);
-			byte[] wavFile = sample.toWavFile(os.toByteArray());
+		AudioSample sample = new AudioSample(
+				RECORDER_SAMPLERATE,
+				SHORTS_PER_ELEMENT * 8,
+				1,
+				MediaRecorder.AudioSource.MIC,
+				timestamp,
+				os.toByteArray()
+		);
 
-			// TODO : send wavFile to TestFairy
-
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		TestFairy.addAudioRecording(sample);
 	}
 
 
@@ -365,80 +391,13 @@ public class TestFairyAudioRecord {
 				return false;
 			}
 		}
-	}
 
-	public static class AudioSample {
+		public float getSecondsSinceStarted() {
+			if (startTime == 0) throw new IllegalStateException("Cannot read time from a StopWatch before starting it first.");
 
-		// Header template to copy into each Wave file, will be edited after copy.
-		static private final byte[] header = {
-				'R', 'I', 'F', 'F',
-				'0', '0', '0', '0',     // chunk size
-				'W', 'A', 'V', 'E',
-				'f', 'm', 't', ' ',
-				0x10, 0x00, 0x00, 0x00, // subchunk size (16 bytes)
-				0x01, 0x00,             // audio format pcm
-				0x01, 0x00,             // total channels
-				0x00, 0x00, 0x00, 0x00, // sample rate
-				0x00, 0x00, 0x00, 0x00, // byte rate
-				0x04, 0x00,             // block align
-				0x10, 0x00,             // bits per sample
-				'd', 'a', 't', 'a',
-				0x00, 0x00, 0x00, 0x00, // total sample data size
-		};
+			long diff = new Date().getTime() - startTime;
 
-		private int sampleRate;
-		private int bitsPerSample;
-		private int channels;
-
-		public AudioSample(int sampleRate, int bitsPerSample, int channels) {
-			this.sampleRate = sampleRate;
-			this.bitsPerSample = bitsPerSample;
-			this.channels = channels;
-		}
-
-		/**
-		 * Join all audio chunks into one playable RIFF wave file
-		 *
-		 * @return byte[]
-		 * @throws IOException
-		 */
-		public byte[] toWavFile(@NonNull byte[] audioData) throws IOException {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-			baos.write(header);
-			baos.write(audioData, 0, audioData.length);
-
-			byte[] out = baos.toByteArray();
-
-			int byteRate = (sampleRate * bitsPerSample * channels) / 8;
-			int fileSize = out.length + header.length - 4;
-
-			out[0x04] = (byte) (fileSize & 0xff);
-			out[0x05] = (byte) ((fileSize >> 8) & 0xff);
-			out[0x06] = (byte) ((fileSize >> 16) & 0xff);
-			out[0x07] = (byte) ((fileSize >> 24) & 0xff);
-
-			out[0x16] = (byte) (channels & 0xff);
-
-			out[0x18] = (byte) (sampleRate & 0xff);
-			out[0x19] = (byte) ((sampleRate >> 8) & 0xff);
-			out[0x1a] = (byte) ((sampleRate >> 16) & 0xff);
-			out[0x1b] = (byte) ((sampleRate >> 24) & 0xff);
-
-			out[0x1c] = (byte) (byteRate & 0xff);
-			out[0x1d] = (byte) ((byteRate >> 8) & 0xff);
-			out[0x1e] = (byte) ((byteRate >> 16) & 0xff);
-			out[0x1f] = (byte) ((byteRate >> 24) & 0xff);
-
-			out[0x22] = (byte) (bitsPerSample & 0xff);
-			out[0x23] = (byte) ((bitsPerSample >> 8) & 0xff);
-
-			out[0x28] = (byte) (out.length & 0xff);
-			out[0x29] = (byte) ((out.length >> 8) & 0xff);
-			out[0x2a] = (byte) ((out.length >> 16) & 0xff);
-			out[0x2b] = (byte) ((out.length >> 24) & 0xff);
-
-			return out;
+			return (float) (((double) diff) / 1000.0);
 		}
 	}
 

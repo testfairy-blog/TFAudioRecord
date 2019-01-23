@@ -6,7 +6,7 @@ import com.testfairy.TestFairy;
 
 public class MainApplication extends Application {
 
-	static public final String APP_TOKEN = "";
+	static public final String APP_TOKEN = "SDK-nwrmjkFK";
 
 	@Override
 	public void onCreate() {
