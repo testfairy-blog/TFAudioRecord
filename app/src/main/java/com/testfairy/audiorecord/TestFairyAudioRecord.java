@@ -58,6 +58,18 @@ public class TestFairyAudioRecord {
 
 	/***************** Public Interface *****************/
 
+	/**
+	 * Call this method right after you call TestFairy.begin()
+	 * to initialize the recorder.
+	 *
+	 */
+	static public void begin() {
+		// TODO 
+	}
+
+
+	/***************** Lifecycle *****************/
+
 
 	/**
 	 * Call this method at the end of your Activity's onCreate block. It is essential
@@ -68,6 +80,7 @@ public class TestFairyAudioRecord {
 	static public void onCreate(@NonNull Activity activity) {
 		if (instance != null) {
 			synchronized (instance) {
+				instance.stopRecording();
 				instance = new TestFairyAudioRecord(activity);
 			}
 		} else {
