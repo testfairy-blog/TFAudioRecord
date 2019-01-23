@@ -46,6 +46,7 @@ public class TestFairyAudioRecord {
 	private AudioRecord recorder = null;
 	private Thread recordingThread = null;
 	private boolean isRecording = false;
+	private boolean alreadyDeniedPermission = false;
 	private int bufferElements2Rec = -2;
 	private StopWatch sessionStopwatch = new StopWatch(false);
 
@@ -142,8 +143,20 @@ public class TestFairyAudioRecord {
 							).show();
 						}
 
-						activity.requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO
-						}, REQUEST_AUDIO_PERMISSION_RESULT);
+						if (!alreadyDeniedPermission) {
+							activity.requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO
+							}, REQUEST_AUDIO_PERMISSION_RESULT);
+						} else {
+							String errorText = "Permission not granted. Restart app to retry permission acquisition.";
+
+							Toast.makeText(
+									activity,
+									errorText,
+									Toast.LENGTH_LONG
+							).show();
+
+							Log.e(TAG, errorText);
+						}
 					}
 
 				} else {
@@ -166,6 +179,8 @@ public class TestFairyAudioRecord {
 
 						Log.d(TAG, "Started recording.");
 					}
+				} else {
+					Log.e(TAG, "Cannot record due to an initialization error in the recorder.");
 				}
 			}
 		}
@@ -188,6 +203,8 @@ public class TestFairyAudioRecord {
 								"Application will not have audio on record",
 								Toast.LENGTH_SHORT
 						).show();
+
+						alreadyDeniedPermission = true;
 					}
 				}
 			}
