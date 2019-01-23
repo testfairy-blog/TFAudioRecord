@@ -42,12 +42,11 @@ public class TestFairyAudioRecord {
 
 	/***************** Recorder State *****************/
 
-	WeakReference<Activity> activityWeakReference;
+	private WeakReference<Activity> activityWeakReference;
 	private AudioRecord recorder = null;
 	private Thread recordingThread = null;
 	private boolean isRecording = false;
 	private boolean alreadyDeniedPermission = false;
-	private int bufferElements2Rec = -2;
 	private StopWatch sessionStopwatch = new StopWatch(false);
 
 
@@ -247,7 +246,7 @@ public class TestFairyAudioRecord {
 			Log.d(TAG, "Attempting rate " + RECORDER_SAMPLERATE + "Hz, bits: " + RECORDER_AUDIO_ENCODING + ", channel: "
 					+ RECORDER_CHANNELS);
 
-			bufferElements2Rec = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
+			int bufferElements2Rec = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
 
 			if (bufferElements2Rec != AudioRecord.ERROR_BAD_VALUE) {
 				// check if we can instantiate and have a success
