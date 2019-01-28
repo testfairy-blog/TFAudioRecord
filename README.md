@@ -21,4 +21,4 @@ TestFairy audio recording sample project
 
 ## Extra Utilities
 * Use `TestFairyAudioRecorder.setAudioSampleListener()` to capture each recorder audio sample. Given listeners will run in main thread.
-* Use `TestFairyAudioRecorder.mute()` to pause recordings. Use ``TestFairyAudioRecorder.unmute()` to resume.
+* Use `TestFairyAudioRecorder.mute()` to pause recordings. Use `TestFairyAudioRecorder.unmute()` to resume.
