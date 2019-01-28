@@ -2,7 +2,7 @@
 TestFairy audio recording sample project
 
 ## How to include in a project
-1. Copy [this](https://raw.githubusercontent.com/diegoperini/TFAudioRecord/master/app/src/main/java/com/testfairy/audiorecord/TestFairyAudioRecord.java) to your project.
+1. Copy [this](/app/src/main/java/com/testfairy/audiorecord/TestFairyAudioRecord.java) to your project.
 2. [Add TestFairy SDK to your project](https://docs.testfairy.com/Android/Integrating_Android_SDK.html).
 3. Put the line below right next to `TestFairy.begin(context, token)`.
 ```java
@@ -10,12 +10,12 @@ TestFairy audio recording sample project
 ```
 4. Put the lines below in your main activity.
 ```java
-	@Override
-	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+@Override
+public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-		TestFairyAudioRecord.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
+    TestFairyAudioRecord.onRequestPermissionsResult(requestCode, permissions, grantResults);
+}
 ```  
 5. Profit!
 
