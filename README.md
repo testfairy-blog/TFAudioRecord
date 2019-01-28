@@ -1,5 +1,5 @@
 # TFAudioRecord
-TestFairy audio recording sample project
+TestFairy audio recording sample project.
 
 ## How to include in a project
 1. Copy [this](/app/src/main/java/com/testfairy/audiorecord/TestFairyAudioRecord.java) to your project.
@@ -22,3 +22,6 @@ public void onRequestPermissionsResult(int requestCode, @NonNull String[] permis
 ## Extra Utilities
 * Use `TestFairyAudioRecorder.setAudioSampleListener()` to capture each recorder audio sample. Given listeners will run in main thread.
 * Use `TestFairyAudioRecorder.mute()` to pause recordings. Use `TestFairyAudioRecorder.unmute()` to resume.
+
+## License
+TBD
