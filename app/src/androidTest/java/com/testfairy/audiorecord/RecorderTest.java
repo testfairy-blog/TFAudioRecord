@@ -92,7 +92,7 @@ public class RecorderTest {
 		Thread.sleep(40000);
 		TestFairyAudioRecord.setAudioSampleListener(null);
 
-		assertEquals(samples.size(), 2);
+		assertEquals(2, samples.size());
 
 		long timeDiff = samples.get(1).getTime() - samples.get(0).getTime();
 		assertTrue(
@@ -115,7 +115,7 @@ public class RecorderTest {
 		Thread.sleep(20000);
 		TestFairyAudioRecord.setAudioSampleListener(null);
 
-		assertEquals(samples.size(), 1);
+		assertEquals(1, samples.size());
 
 		assertTrue(
 				"File size is less than 600kb.",
@@ -134,14 +134,14 @@ public class RecorderTest {
 			}
 		});
 
-		Thread.sleep(1000);
+		Thread.sleep(5000);
 		TestFairyAudioRecord.mute();
 		Thread.sleep(1000);
 		TestFairyAudioRecord.unmute();
-		Thread.sleep(1000);
+		Thread.sleep(5000);
 		TestFairyAudioRecord.mute();
 
-		assertEquals(samples.size(), 2);
+		assertEquals(2, samples.size());
 	}
 
 	private void waitForRecorderThread() throws InterruptedException {
