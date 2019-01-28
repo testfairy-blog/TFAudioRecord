@@ -2,11 +2,14 @@ package com.testfairy.audiorecord;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Application;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Build;
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
@@ -19,7 +22,6 @@ import com.testfairy.modules.audio.AudioSample;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.util.Date;
 
 public class TestFairyAudioRecord {
 
@@ -46,6 +48,8 @@ public class TestFairyAudioRecord {
 	private AudioRecord recorder = null;
 	private Thread recordingThread = null;
 	private boolean isRecording = false;
+	private boolean isAppResumed = false;
+	private boolean isMuted = false;
 	private boolean alreadyDeniedPermission = false;
 	private StopWatch sessionStopwatch = new StopWatch(false);
 	private AudioSampleListener audioSampleListener = null;
@@ -62,32 +66,11 @@ public class TestFairyAudioRecord {
 	 * Call this method right after you call TestFairy.begin()
 	 * to initialize the recorder.
 	 *
+	 * @param context Application context or an Activity
 	 */
-	static public void begin() {
-		// TODO 
-	}
-
-
-	/***************** Lifecycle *****************/
-
-
-	/**
-	 * Call this method at the end of your Activity's onCreate block. It is essential
-	 * to call this before everything else to make sure a recorder thread is created.
-	 *
-	 * @param activity The activity which the operating system launches
-	 */
-	static public void onCreate(@NonNull Activity activity) {
-		if (instance != null) {
-			synchronized (instance) {
-				instance.stopRecording();
-				instance = new TestFairyAudioRecord(activity);
-			}
-		} else {
-			instance = new TestFairyAudioRecord(activity);
-		}
-
-		Log.d(TAG, "TestFairyAudioRecord initialized.");
+	static public void begin(Context context) {
+		Application a = (Application) context.getApplicationContext();
+		a.registerActivityLifecycleCallbacks(lifecycle);
 
 		TestFairy.addSessionStateListener(new SessionStateListener() {
 			@Override
@@ -95,40 +78,6 @@ public class TestFairyAudioRecord {
 				instance.sessionStopwatch.start();
 			}
 		});
-	}
-
-	/**
-	 * Call this method at the end of your Activity's onResume block. It is essential
-	 * to call this to restart audio recorder when your app gains focus on foreground.
-	 *
-	 */
-	static public void onResume() {
-		Log.d(TAG, "TestFairyAudioRecord is in foreground.");
-
-		if (instance != null) {
-			synchronized (instance) {
-				instance.startRecording();
-			}
-		} else {
-			throw new AudioRecorderNotInitializedException();
-		}
-	}
-
-	/**
-	 * Call this method at the end of your Activity's onPause block. It is essential
-	 * to call this to flush recorded audio before your app goes to background.
-	 *
-	 */
-	static public void onPause() {
-		Log.d(TAG, "TestFairyAudioRecord is in background.");
-
-		if (instance != null) {
-			synchronized (instance) {
-				instance.stopRecording();
-			}
-		} else {
-			throw new AudioRecorderNotInitializedException();
-		}
 	}
 
 	/**
@@ -144,7 +93,7 @@ public class TestFairyAudioRecord {
 
 		if (instance != null) {
 			synchronized (instance) {
-				instance.retryWithRecievedPermissions(requestCode, permissions, grantResults);
+				instance.retryWithReceivedPermissions(requestCode, permissions, grantResults);
 			}
 		} else {
 			throw new AudioRecorderNotInitializedException();
@@ -168,6 +117,134 @@ public class TestFairyAudioRecord {
 		}
 	}
 
+	/**
+	 * Call this method to temporarily disallow recording audio.
+	 *
+	 */
+	static public void mute() {
+		if (instance != null) {
+			synchronized (instance) {
+				if (instance.isMuted) return;
+
+				instance.isMuted = true;
+				if (instance.isRecording)
+					instance.stopRecording();
+			}
+		}
+	}
+
+	/**
+	 * Call this method to allow recording audio if already muted before.
+	 *
+	 */
+	static public void unmute() {
+		if (instance != null) {
+			synchronized (instance) {
+				if (!instance.isMuted) return;
+
+				instance.isMuted = false;
+				if (!instance.isRecording && instance.isAppResumed)
+					instance.startRecording();
+			}
+		}
+	}
+
+
+	/***************** Lifecycle *****************/
+
+	static private final Application.ActivityLifecycleCallbacks lifecycle = new Application.ActivityLifecycleCallbacks() {
+		@Override
+		public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+			onCreate(activity);
+		}
+
+		@Override
+		public void onActivityStarted(Activity activity) {
+
+		}
+
+		@Override
+		public void onActivityResumed(Activity activity) {
+			onResume();
+		}
+
+		@Override
+		public void onActivityPaused(Activity activity) {
+			onPause();
+		}
+
+		@Override
+		public void onActivityStopped(Activity activity) {
+
+		}
+
+		@Override
+		public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
+
+		}
+
+		@Override
+		public void onActivityDestroyed(Activity activity) {
+
+		}
+	};
+
+
+	/**
+	 * Call this method at the end of your Activity's onCreate block. It is essential
+	 * to call this before everything else to make sure a recorder thread is created.
+	 *
+	 * @param activity The activity which the operating system launches
+	 */
+	static private void onCreate(@NonNull Activity activity) {
+		if (instance != null) {
+			synchronized (instance) {
+				instance.stopRecording();
+				instance = new TestFairyAudioRecord(activity);
+			}
+		} else {
+			instance = new TestFairyAudioRecord(activity);
+		}
+
+		Log.d(TAG, "TestFairyAudioRecord initialized.");
+	}
+
+	/**
+	 * Call this method at the end of your Activity's onResume block. It is essential
+	 * to call this to restart audio recorder when your app gains focus on foreground.
+	 *
+	 */
+	static private void onResume() {
+		Log.d(TAG, "TestFairyAudioRecord is in foreground.");
+
+		if (instance != null) {
+			synchronized (instance) {
+				instance.isAppResumed = true;
+				instance.startRecording();
+			}
+		} else {
+			throw new AudioRecorderNotInitializedException();
+		}
+	}
+
+	/**
+	 * Call this method at the end of your Activity's onPause block. It is essential
+	 * to call this to flush recorded audio before your app goes to background.
+	 *
+	 */
+	static private void onPause() {
+		Log.d(TAG, "TestFairyAudioRecord is in background.");
+
+		if (instance != null) {
+			synchronized (instance) {
+				instance.isAppResumed = false;
+				instance.stopRecording();
+			}
+		} else {
+			throw new AudioRecorderNotInitializedException();
+		}
+	}
+
 
 	/***************** Implementation *****************/
 
@@ -176,8 +253,8 @@ public class TestFairyAudioRecord {
 	}
 
 	private void startRecording() {
-		if (activityWeakReference.get() != null) {
-			synchronized (activityWeakReference.get()) {
+		if (activityWeakReference.get() != null && !isMuted) {
+			synchronized (this) {
 				Activity activity = activityWeakReference.get();
 
 				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -241,9 +318,9 @@ public class TestFairyAudioRecord {
 		}
 	}
 
-	private void retryWithRecievedPermissions(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+	private void retryWithReceivedPermissions(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 		if (activityWeakReference.get() != null) {
-			synchronized (activityWeakReference.get()) {
+			synchronized (this) {
 				Activity activity = activityWeakReference.get();
 
 				if (requestCode == REQUEST_AUDIO_PERMISSION_RESULT) {
@@ -269,7 +346,7 @@ public class TestFairyAudioRecord {
 	private void stopRecording() {
 		// stops the recording activity
 		if (activityWeakReference.get() != null) {
-			synchronized (activityWeakReference.get()) {
+			synchronized (this) {
 				if (recorder != null) {
 					synchronized (recorder) {
 						isRecording = false;
@@ -343,7 +420,7 @@ public class TestFairyAudioRecord {
 		while (isRecording) {
 			// gets the voice output from microphone to byte format
 			if (activityWeakReference.get() != null) {
-				synchronized (activityWeakReference.get()) {
+				synchronized (this) {
 					flushStopWatch.startIfNotStarted();
 
 					if (flushStopWatch.stopIfAboveTimeLimit(AUDIO_FILE_MAX_DURATION_IN_SECONDS)) {
@@ -432,7 +509,6 @@ public class TestFairyAudioRecord {
 		for (int i = 0; i < shortArrsize; i++) {
 			bytes[i * 2] = (byte) (sData[i] & 0x00FF);
 			bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
-			sData[i] = 0;
 		}
 
 		return bytes;
@@ -449,7 +525,7 @@ public class TestFairyAudioRecord {
 		public void start() {
 			if (startTime != 0) throw new IllegalStateException("StopWatch already started before.");
 
-			startTime = new Date().getTime();
+			startTime = System.currentTimeMillis();
 		}
 
 		public void stop() {
@@ -463,7 +539,7 @@ public class TestFairyAudioRecord {
 		public boolean stopIfAboveTimeLimit(int limitInSeconds) {
 			if (startTime == 0) throw new IllegalStateException("Cannot stop a StopWatch before starting it first.");
 
-			long currentTime = new Date().getTime();
+			long currentTime = System.currentTimeMillis();
 
 			if (currentTime - startTime >= limitInSeconds * 1000) {
 				startTime = 0;
@@ -476,7 +552,7 @@ public class TestFairyAudioRecord {
 		public float getSecondsSinceStarted() {
 			if (startTime == 0) throw new IllegalStateException("Cannot read time from a StopWatch before starting it first.");
 
-			long diff = new Date().getTime() - startTime;
+			long diff = System.currentTimeMillis() - startTime;
 
 			return (float) (((double) diff) / 1000.0);
 		}

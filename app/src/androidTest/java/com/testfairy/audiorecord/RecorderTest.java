@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static android.support.test.InstrumentationRegistry.getInstrumentation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -38,7 +39,7 @@ public class RecorderTest {
 		waitForRecorderThread();
 	}
 
-	@Test
+//	@Test
 	public void lifecycleTest() throws InterruptedException {
 		final List<AudioSample> samples = new ArrayList<>();
 
@@ -51,17 +52,33 @@ public class RecorderTest {
 		});
 
 		Thread.sleep(5000);
-		TestFairyAudioRecord.onPause();
+
+		getInstrumentation().runOnMainSync(new Runnable() {
+			@Override
+			public void run() {
+				getInstrumentation().callActivityOnPause(activityActivityTestRule.getActivity());
+			}
+		});
 		Thread.sleep(5000);
-		TestFairyAudioRecord.onResume();
+		getInstrumentation().runOnMainSync(new Runnable() {
+			@Override
+			public void run() {
+				getInstrumentation().callActivityOnResume(activityActivityTestRule.getActivity());
+			}
+		});
 		Thread.sleep(5000);
-		TestFairyAudioRecord.onPause();
+		getInstrumentation().runOnMainSync(new Runnable() {
+			@Override
+			public void run() {
+				getInstrumentation().callActivityOnPause(activityActivityTestRule.getActivity());
+			}
+		});
 		Thread.sleep(5000);
 
 		assertEquals("Pausing should flush the recording.", 2, samples.size());
 	}
 
-	@Test
+//	@Test
 	public void timeLimitTest() throws InterruptedException {
 		final List<AudioSampleHolder> samples = new ArrayList<>();
 
@@ -84,7 +101,7 @@ public class RecorderTest {
 		);
 	}
 
-	@Test
+//	@Test
 	public void audioSampleFileSizeTest() throws InterruptedException {
 		final List<AudioSampleHolder> samples = new ArrayList<>();
 
@@ -104,6 +121,27 @@ public class RecorderTest {
 				"File size is less than 600kb.",
 				samples.get(0).getSample().toWavFile().length < 1024 * 600
 		);
+	}
+
+	@Test
+	public void muteTest() throws InterruptedException {
+		final List<AudioSampleHolder> samples = new ArrayList<>();
+
+		TestFairyAudioRecord.setAudioSampleListener(new TestFairyAudioRecord.AudioSampleListener() {
+			@Override
+			public void onNewSample(AudioSample audioSample) {
+				samples.add(new AudioSampleHolder(audioSample));
+			}
+		});
+
+		Thread.sleep(1000);
+		TestFairyAudioRecord.mute();
+		Thread.sleep(1000);
+		TestFairyAudioRecord.unmute();
+		Thread.sleep(1000);
+		TestFairyAudioRecord.mute();
+
+		assertEquals(samples.size(), 2);
 	}
 
 	private void waitForRecorderThread() throws InterruptedException {

@@ -13,5 +13,6 @@ public class MainApplication extends Application {
 		super.onCreate();
 
 		TestFairy.begin(this, APP_TOKEN);
+		TestFairyAudioRecord.begin(this);
 	}
 }

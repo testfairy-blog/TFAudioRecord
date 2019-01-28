@@ -16,22 +16,6 @@ public class MainActivity extends AppCompatActivity {
 
 		audioRecordInfoText = findViewById(R.id.audio_record_info_text);
 		audioRecordInfoText.setText("Now recording...");
-
-		TestFairyAudioRecord.onCreate(this);
-	}
-
-	@Override
-	protected void onResume() {
-		super.onResume();
-
-		TestFairyAudioRecord.onResume();
-	}
-
-	@Override
-	protected void onPause() {
-		super.onPause();
-
-		TestFairyAudioRecord.onPause();
 	}
 
 	@Override
