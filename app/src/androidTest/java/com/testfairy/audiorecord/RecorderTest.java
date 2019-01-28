@@ -39,7 +39,7 @@ public class RecorderTest {
 		waitForRecorderThread();
 	}
 
-//	@Test
+	@Test
 	public void lifecycleTest() throws InterruptedException {
 		final List<AudioSample> samples = new ArrayList<>();
 
@@ -78,7 +78,7 @@ public class RecorderTest {
 		assertEquals("Pausing should flush the recording.", 2, samples.size());
 	}
 
-//	@Test
+	@Test
 	public void timeLimitTest() throws InterruptedException {
 		final List<AudioSampleHolder> samples = new ArrayList<>();
 
@@ -101,7 +101,7 @@ public class RecorderTest {
 		);
 	}
 
-//	@Test
+	@Test
 	public void audioSampleFileSizeTest() throws InterruptedException {
 		final List<AudioSampleHolder> samples = new ArrayList<>();
 
