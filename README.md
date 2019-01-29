@@ -24,4 +24,4 @@ public void onRequestPermissionsResult(int requestCode, @NonNull String[] permis
 * Use `TestFairyAudioRecorder.mute()` to pause recordings. Use `TestFairyAudioRecorder.unmute()` to resume.
 
 ## License
-TBD
+Apache License 2.0
