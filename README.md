@@ -19,6 +19,9 @@ public void onRequestPermissionsResult(int requestCode, @NonNull String[] permis
 ```  
 5. Profit!
 
+## Sample Project
+You can see an example usage in [Draw Me A Fairy](https://github.com/testfairy/draw-me-a-fairy/) project and its corresponding `audio` product flavor.
+
 ## Extra Utilities
 * Use `TestFairyAudioRecorder.setAudioSampleListener()` to capture each recorder audio sample. Given listeners will run in main thread.
 * Use `TestFairyAudioRecorder.mute()` to pause recordings. Use `TestFairyAudioRecorder.unmute()` to resume.
