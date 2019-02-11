@@ -10,8 +10,6 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -66,9 +64,11 @@ public class TestFairyAudioRecord {
 	 * Call this method right after you call TestFairy.begin()
 	 * to initialize the recorder.
 	 *
-	 * @param context Application context or an Activity
+	 * @param context Application context or an Activity, must not be null.
 	 */
 	static public void begin(Context context) {
+		if (context==null) throw new AssertionError("Context cannot be null.");
+
 		Application a = (Application) context.getApplicationContext();
 		a.registerActivityLifecycleCallbacks(lifecycle);
 
@@ -88,7 +88,7 @@ public class TestFairyAudioRecord {
 	 * @param permissions Requested ermission list, pass what you receive from the event directly.
 	 * @param grantResults Granted permission request list, pass what you receive from the event directly.
 	 */
-	static public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+	static public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 		Log.d(TAG, "TestFairyAudioRecord received permission results.");
 
 		if (instance != null) {
@@ -196,7 +196,7 @@ public class TestFairyAudioRecord {
 	 *
 	 * @param activity The activity which the operating system launches
 	 */
-	static private void onCreate(@NonNull Activity activity) {
+	static private void onCreate(Activity activity) {
 		if (instance != null) {
 			synchronized (instance) {
 				instance.stopRecording();
@@ -248,7 +248,7 @@ public class TestFairyAudioRecord {
 
 	/***************** Implementation *****************/
 
-	private TestFairyAudioRecord(@NonNull Activity activity) {
+	private TestFairyAudioRecord(Activity activity) {
 		activityWeakReference = new WeakReference<>(activity);
 	}
 
@@ -258,7 +258,7 @@ public class TestFairyAudioRecord {
 				Activity activity = activityWeakReference.get();
 
 				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) ==
+					if (activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
 							PackageManager.PERMISSION_GRANTED) {
 						// put your code for Version>=Marshmallow
 						if (recorder != null) {
@@ -318,7 +318,7 @@ public class TestFairyAudioRecord {
 		}
 	}
 
-	private void retryWithReceivedPermissions(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+	private void retryWithReceivedPermissions(int requestCode, String[] permissions, int[] grantResults) {
 		if (activityWeakReference.get() != null) {
 			synchronized (this) {
 				Activity activity = activityWeakReference.get();
@@ -476,7 +476,7 @@ public class TestFairyAudioRecord {
 		}
 	}
 
-	private void flushOutputStreamToTestFairy(@NonNull ByteArrayOutputStream os, float timestamp) {
+	private void flushOutputStreamToTestFairy(ByteArrayOutputStream os, float timestamp) {
 		Log.d(TAG, "Flushing audio to TestFairy: " + timestamp);
 
 		final AudioSample sample = new AudioSample(
