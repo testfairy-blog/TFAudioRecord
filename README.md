@@ -2,7 +2,7 @@
 TestFairy audio recording sample project.
 
 ## How to include in a project
-1. Copy [this](/app/src/main/java/com/testfairy/audiorecord/TestFairyAudioRecord.java) to your project.
+1. Copy [TestFairyAudioRecord.java](/app/src/main/java/com/testfairy/audiorecord/TestFairyAudioRecord.java) to your project.
 2. [Add TestFairy SDK to your project](https://docs.testfairy.com/Android/Integrating_Android_SDK.html).
 3. Put the line below right next to `TestFairy.begin(context, token)`.
 ```java
