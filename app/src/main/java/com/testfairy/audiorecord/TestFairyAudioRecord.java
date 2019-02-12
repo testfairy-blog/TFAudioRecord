@@ -49,13 +49,13 @@ public class TestFairyAudioRecord {
 	private boolean isAppResumed = false;
 	private boolean isMuted = false;
 	private boolean alreadyDeniedPermission = false;
-	private StopWatch sessionStopwatch = new StopWatch(false);
 	private AudioSampleListener audioSampleListener = null;
 
 
 	/***************** Singleton State *****************/
 
 	static private TestFairyAudioRecord instance;
+	private static StopWatch sessionStopwatch = new StopWatch(false);
 
 
 	/***************** Public Interface *****************/
@@ -72,10 +72,11 @@ public class TestFairyAudioRecord {
 		Application a = (Application) context.getApplicationContext();
 		a.registerActivityLifecycleCallbacks(lifecycle);
 
+
 		TestFairy.addSessionStateListener(new SessionStateListener() {
 			@Override
 			public void onSessionStarted(String s) {
-				instance.sessionStopwatch.start();
+				sessionStopwatch.startIfNotStarted();
 			}
 		});
 	}
@@ -201,9 +202,11 @@ public class TestFairyAudioRecord {
 			synchronized (instance) {
 				instance.stopRecording();
 				instance = new TestFairyAudioRecord(activity);
+				sessionStopwatch.startIfNotStarted();
 			}
 		} else {
 			instance = new TestFairyAudioRecord(activity);
+			sessionStopwatch.startIfNotStarted();
 		}
 
 		Log.d(TAG, "TestFairyAudioRecord initialized.");
