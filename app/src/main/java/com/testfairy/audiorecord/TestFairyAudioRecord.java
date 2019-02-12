@@ -55,7 +55,7 @@ public class TestFairyAudioRecord {
 	/***************** Singleton State *****************/
 
 	static private TestFairyAudioRecord instance;
-	private static StopWatch sessionStopwatch = new StopWatch(false);
+	static private StopWatch sessionStopwatch = new StopWatch(false);
 
 
 	/***************** Public Interface *****************/
@@ -71,8 +71,7 @@ public class TestFairyAudioRecord {
 
 		Application a = (Application) context.getApplicationContext();
 		a.registerActivityLifecycleCallbacks(lifecycle);
-
-
+		
 		TestFairy.addSessionStateListener(new SessionStateListener() {
 			@Override
 			public void onSessionStarted(String s) {
