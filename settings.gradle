@@ -1,1 +1,1 @@
-include ':app', ':testfairy-android-sdk-release'
+include ':app'

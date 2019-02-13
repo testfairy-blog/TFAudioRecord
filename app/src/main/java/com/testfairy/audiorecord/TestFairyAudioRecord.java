@@ -71,7 +71,7 @@ public class TestFairyAudioRecord {
 
 		Application a = (Application) context.getApplicationContext();
 		a.registerActivityLifecycleCallbacks(lifecycle);
-		
+
 		TestFairy.addSessionStateListener(new SessionStateListener() {
 			@Override
 			public void onSessionStarted(String s) {
